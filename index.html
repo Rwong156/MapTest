@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 Berkmar Chromebook Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* --- General Styles --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            color: #333;
+            scroll-behavior: smooth;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* --- Navigation Bar --- */
+        header {
+            background: #003366; /* Berkmar Blue */
+            color: #fff;
+            padding: 1rem 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 90%;
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        .logo { font-size: 1.5rem; font-weight: bold; }
+        .nav-links { list-style: none; display: flex; }
+        .nav-links li { margin-left: 20px; }
+        .nav-links a { color: #fff; text-decoration: none; font-weight: 500; transition: color 0.3s; }
+        .nav-links a:hover { color: #f1c40f; }
+
+        /* --- Sections --- */
+        section {
+            padding: 60px 20px;
+            flex: 1; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        #home { 
+            background: #ecf0f1; 
+            min-height: 40vh; 
+        }
+        
+        #discrepancies { 
+            background: #ffffff; 
+            min-height: 60vh;
+            border-top: 1px solid #ddd; 
+        }
+
+        /* Style for the new Data Section */
+        #detailed-data {
+            background: #f4f6f7;
+            border-top: 1px solid #ddd;
+        }
+
+        h1 { font-size: 2.5rem; margin-bottom: 10px; color: #003366; }
+        h2 { font-size: 2.5rem; margin-bottom: 20px; color: #003366; }
+        p { max-width: 700px; margin-bottom: 20px; font-size: 1.1rem; }
+
+        /* --- Buttons --- */
+        .btn {
+            display: inline-block;
+            background: #b30000;
+            color: #fff;
+            padding: 10px 25px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 10px;
+            transition: background 0.3s;
+        }
+        .btn:hover { background: #800000; }
+
+        /* --- Flex Container for Table & Chart --- */
+        .report-container {
+            display: flex;
+            flex-wrap: wrap; 
+            justify-content: center;
+            align-items: flex-start;
+            gap: 40px;
+            width: 100%;
+            max-width: 1200px;
+            margin-top: 20px;
+        }
+
+        /* --- Table Styles --- */
+        .table-wrapper {
+            flex: 1;
+            min-width: 300px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        /* Container for the long data table to allow scrolling */
+        .data-table-container {
+            width: 100%;
+            max-width: 1100px;
+            overflow-x: auto; /* Allows horizontal scroll on mobile */
+            max-height: 600px; /* Limits height so it scrolls vertically too */
+            background: white;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+            text-align: left;
+        }
+
+        th {
+            background: #e0e0e0;
+            padding: 12px;
+            border: 1px solid #999;
+            position: sticky; /* Keeps headers visible when scrolling */
+            top: 0;
+        }
+
+        td {
+            padding: 12px;
+            border: 1px solid #999;
+            white-space: nowrap; /* Keeps data on one line */
+        }
+
+        /* Zebra Striping for the detailed data table */
+        .detailed-table tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .detailed-table th {
+            background-color: #003366;
+            color: white;
+            border: 1px solid #003366;
+        }
+
+        /* Specific Row Colors for Discrepancy Table */
+        .row-blue { background-color: #CCEEFF; }
+        .row-green { background-color: #E2EFDA; }
+        .row-teal { background-color: #DDEBF7; }
+        .row-pink { background-color: #E6CEE3; }
+        .row-orange { background-color: #FCE4D6; }
+        .row-white { background-color: #FFFFFF; }
+
+        /* --- Chart Wrapper --- */
+        .chart-wrapper {
+            flex: 1;
+            min-width: 300px;
+            max-width: 500px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 1px solid #eee;
+        }
+
+        /* --- Warning Box Style --- */
+        .warning-box {
+            margin-top: 40px;
+            padding: 20px;
+            background-color: #fff3cd; 
+            border: 2px solid #ffecb5;
+            color: #856404; 
+            border-radius: 8px;
+            max-width: 900px;
+            font-size: 1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        footer { 
+            text-align: center; 
+            padding: 20px; 
+            background: #1a252f; 
+            color: #bdc3c7; 
+            font-size: 0.9rem;
+            margin-top: auto; 
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <nav>
+            <div class="logo">BHS Reports</div>
+            <ul class="nav-links">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#discrepancies">Discrepancies</a></li>
+                <li><a href="#detailed-data">Detailed Data</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <section id="home">
+        <h1>2026 Berkmar High School Chromebook Reconciliation Report</h1>
+        <p>Current status overview of student device assignments, damages, and inventory reconciliation for the 2025-2026 school year.</p>
+        <a href="#discrepancies" class="btn">View Discrepancy Report</a>
+    </section>
+
+    <section id="discrepancies">
+        <h2>Discrepancy Issues</h2>
+        <p>Breakdown of data conflicts between eCirc (Inventory) and the Google Admin Console.</p>
+
+        <div class="report-container">
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Discrepancy Issue</th>
+                            <th style="width: 80px; text-align: center;">Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="row-blue">
+                            <td>S/N discrepancy between eCirc and Console - S/N needs to be corrected in eCirc.</td>
+                            <td style="text-align: center; font-weight: bold;">4</td>
+                        </tr>
+                        <tr class="row-green">
+                            <td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td>
+                            <td style="text-align: center; font-weight: bold;">18</td>
+                        </tr>
+                        <tr class="row-teal">
+                            <td>Devices that are disabled in console but still show checked out or available in eCirc...</td>
+                            <td style="text-align: center; font-weight: bold;">288</td>
+                        </tr>
+                        <tr class="row-pink">
+                            <td>Chromebooks that have not had activity in the last 30 days but have a status of checked out.</td>
+                            <td style="text-align: center; font-weight: bold;">132</td>
+                        </tr>
+                        <tr class="row-orange">
+                            <td>Marked lost in eCirc or Ready for Disposal but still provisioned in console.</td>
+                            <td style="text-align: center; font-weight: bold;">39</td>
+                        </tr>
+                        <tr class="row-white">
+                            <td>Chromebooks that show on eCirc Report but not in Console report need to be researched.</td>
+                            <td style="text-align: center; font-weight: bold;">20</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="chart-wrapper">
+                <canvas id="discrepancyChart"></canvas>
+            </div>
+        </div>
+
+        <div class="warning-box">
+            <p><strong>!!!</strong> "Devices that are disabled in console but still show checked out or available in eCirc, these items should be marked Lost or Ready for Disposal in eCirc" may be located in the work room but was disabled due to long period of inactivity. <strong>!!!</strong></p>
+        </div>
+
+    </section>
+
+    <section id="detailed-data">
+        <h2>Detailed Data List</h2>
+        <p>Full record of devices flagged in the discrepancy report.</p>
+        
+        <div class="data-table-container">
+            <table class="detailed-table">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Asset Tag</th>
+                        <th>Serial Number</th>
+                        <th>eCirc Status</th>
+                        <th>Console Status</th>
+                        <th>Last Activity</th>
+                        <th>Discrepancy Note</th>
+                    </tr>
+                </thead>
+                <tbody>
+<tr><td>HP 14a-na0022od Chromebook Laptop</td><td>C00000186955</td><td>5CD048K7XB</td><td>Available</td><td>DISABLED</td><td>5/24/2023</td><td> S/N discrepancy between eCirc and Console - S/N needs to be corrected in eCirc. </td></tr>
+<tr><td>HP 14a-na0022od Chromebook Laptop</td><td>C00000186957</td><td>5CD048K9YP</td><td>Available</td><td>DISABLED</td><td>5/22/2024</td><td> S/N discrepancy between eCirc and Console - S/N needs to be corrected in eCirc. </td></tr>
+<tr><td>HP 14a-na0022od Chromebook Laptop</td><td>C00000186964</td><td>5CD048KCOH</td><td>Lost</td><td>Not in Console</td><td>Not in Console</td><td> S/N discrepancy between eCirc and Console - S/N needs to be corrected in eCirc. </td></tr>
+<tr><td>HP 14a-na0022od Chromebook Laptop</td><td>C00000224442</td><td>5CD048KBDH</td><td>Lost</td><td>DISABLED</td><td>10/19/2022</td><td> S/N discrepancy between eCirc and Console - S/N needs to be corrected in eCirc. </td></tr>
+<tr><td>HP 11 G8 EE Chromebook Laptop CARES1</td><td>5CD102JJ30</td><td></td><td>Available</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>Dell 3100 2-in-1 Touch Chromebook ES Retrofit CARESII</td><td>4DKN0F3</td><td></td><td>Available</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>Dell 3100 2-in-1 Touch Chromebook ES Retrofit CARESII</td><td>99FR0F3</td><td></td><td>Available</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>Dell 3100 2-in-1 Touch Chromebook ES Retrofit CARESII</td><td>331PZD3</td><td></td><td>Available</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>HP 11 G9 EE Chromebook Laptop</td><td>5CD123MKTD</td><td></td><td>Available</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>HP 11 G9 EE Chromebook Laptop</td><td>5CD123MGY8</td><td></td><td>Available</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>Dell 3100 Non-Touch Chromebook</td><td>7ZPMQM3</td><td></td><td>Available</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>Dell 3100 Non-Touch Chromebook</td><td>831LQM3</td><td></td><td>Available</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>Dell 3100 Non-Touch Chromebook</td><td>4LGQYM3</td><td></td><td>Available</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>Dell 3100 Non-Touch Chromebook</td><td>2JWPYM3</td><td></td><td>Available</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>Dell 3100 Non-Touch Chromebook</td><td>F9HRQM3</td><td></td><td>Checked Out</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>Dell 3100 Non-Touch Chromebook</td><td>FL6RQM3</td><td></td><td>Available</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>Dell 3100 Non-Touch Chromebook</td><td>CNMHFN3</td><td></td><td>Available</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>HP 11 G9 EE Chromebook Laptop</td><td>5CD231DLS5</td><td></td><td>Checked Out</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>HP 68V96UP 11 G9 Chromebook</td><td>5CD327382V</td><td></td><td>Available</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>HP 68V96UP 11 G9 Chromebook</td><td>5CD32738TH</td><td></td><td>Available</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>HP 9R3B4UT#ABA Fortis 11 Inch G10 Chromebook</td><td>5CD425J61Z</td><td></td><td>Available</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>HP 9R3B4UT#ABA Fortis 11 Inch G10 Chromebook</td><td>5CD431BCGL</td><td></td><td>Available</td><td>Not in Console</td><td>Not in Console</td><td>eCirc status on all Deprovisioned should be RETIRED or LOST, any other status need to be adjusted</td></tr>
+<tr><td>Lenovo 100e 2nd Gen Chromebook Laptop</td><td>P206JJYK</td><td>P206JJYK</td><td>Available</td><td>DISABLED</td><td>8/15/2025</td><td>Devices that are disabled in console but still show checked out or available in eCirc, these items should be marked Lost or Ready for Disposal in eCirc</td></tr>
+<tr><td>HP 11 G8 EE Chromebook Laptop CARES1</td><td>5CD101570S</td><td>5CD101570S</td><td>Available</td><td>DISABLED</td><td>8/13/2025</td><td>Devices that are disabled in console but still show checked out or available in eCirc, these items should be marked Lost or Ready for Disposal in eCirc</td></tr>
+<tr><td>HP 11 G8 EE Chromebook Laptop CARES1</td><td>5CD10157RP</td><td>5CD10157RP</td><td>Checked Out</td><td>DISABLED</td><td>9/3/2024</td><td>Devices that are disabled in console but still show checked out or available in eCirc, these items should be marked
