@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generation Map (Final Full Code)</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=ADLaM+Display&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-body: #e9ecef;
+            --bg-card: #ffffff;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --border: #dddddd;
+            --header-bg: #343a40;
+            --header-text: #ffffff;
+            --accent: #007bff;
+            --map-overlay-text: #000000;
+            --map-overlay-stroke: #ffffff;
+        }
+
+        [data-theme="dark"] {
+            --bg-body: #121212;
+            --bg-card: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-muted: #aaaaaa;
+            --border: #333333;
+            --header-bg: #000000;
+            --header-text: #e0e0e0;
+            --accent: #bb86fc;
+            --map-overlay-text: #ffffff;
+            --map-overlay-stroke: #000000;
+        }
+
+        [data-theme="blueprint"] {
+            --bg-body: #2c3e50;
+            --bg-card: #34495e;
+            --text-main: #ecf0f1;
+            --text-muted: #bdc3c7;
+            --border: #465f75;
+            --header-bg: #2c3e50;
+            --header-text: #ecf0f1;
+            --accent: #3498db;
+            --map-overlay-text: #ffffff;
+            --map-overlay-stroke: #34495e;
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background: var(--bg-body); color: var(--text-main); user-select: none; transition: background 0.3s; }
+        
+        .global-header {
+            background: var(--header-bg); color: var(--header-text); padding: 15px 20px; border-radius: 8px; margin-bottom: 30px;
+            display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            flex-wrap: wrap; gap: 15px; border: 1px solid var(--border);
+        }
+
+        .header-controls { display: flex; gap: 15px; align-items: center; }
+
+        #fileNameInput { padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; width: 180px; }
+        #mapCountSelect { padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px; cursor: pointer; }
+
+        .map-section {
+            background: var(--bg-card); padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 40px; border-left: 5px solid var(--accent);
+            position: relative;
+            min-height: 600px;
+            border: 1px solid var(--border);
+        }
+        .map-badge {
+            position: absolute; top: -15px; left: -10px; background: var(--accent); color: white; 
+            width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; 
+            justify-content: center; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.2); z-index: 10;
+        }
+
+        .editor-widget {
+            position: absolute; top: 20px; right: 20px; width: 360px;
+            background: var(--bg-card); border-radius: 8px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: 1px solid var(--border);
+            z-index: 100; display: flex; flex-direction: column;
+        }
+        .widget-header {
+            background: var(--accent); color: white; padding: 10px; cursor: move;
+            font-weight: bold; border-top-left-radius: 7px; border-top-right-radius: 7px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .widget-body { padding: 15px; display: flex; flex-direction: column; gap: 10px; max-height: 80vh; overflow-y: auto; color: var(--text-main); }
+        .widget-body.collapsed { display: none; }
+
+        .section-title { font-size: 11px; font-weight: bold; color: var(--text-muted); margin-bottom: 2px; text-transform: uppercase; }
+        input[type="text"], input[type="number"], select, textarea { padding: 6px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; width: 100%; box-sizing: border-box; background: #fff; color: #333; }
+        input[type="range"] { width: 100%; cursor: pointer; }
+        .row { display: flex; gap: 5px; align-items: center; }
+        .btn-row { display: flex; gap: 5px; margin-top: 5px; }
+
+        button { padding: 6px 10px; cursor: pointer; color: white; border: none; border-radius: 4px; font-size: 12px; font-weight: 600; flex: 1; }
+        button:disabled { background: #ccc !important; cursor: not-allowed; }
+        .btn-success { background: #28a745; } .btn-primary { background: #007bff; } 
+        .btn-danger { background: #dc3545; } .btn-warning { background: #ffc107; color: black; } 
+        .btn-secondary { background: #6c757d; } .btn-info { background: #17a2b8; } .btn-dark { background: #343a40; }
+        .btn-lg { padding: 12px 24px; font-size: 16px; }
+
+        .scroll-wrapper {
+            width: 100%; height: auto; max-height: none; overflow: visible;
+            border: 2px solid var(--bg-body); background: var(--bg-body); border-radius: 4px;
+        }
+        .map-container { position: relative; transform-origin: top left; width: 100%; }
+        .map-image { display: block; width: 100%; height: auto; pointer-events: none; }
+        .map-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+        .room-poly { stroke: transparent; fill: transparent; cursor: pointer; transition: fill 0.2s; }
+        .room-poly:hover { stroke: var(--accent); stroke-width: 3; }
+        
+        .draggable-icon { cursor: move; transition: opacity 0.2s; }
+        .draggable-icon:hover { opacity: 0.8; }
+        .draggable-icon.selected { outline: 2px dashed var(--accent); }
+
+        .room-label { 
+            font-family: 'Arial Narrow', 'Arial', sans-serif; font-weight: 700; 
+            fill: var(--map-overlay-text); text-anchor: middle; dominant-baseline: middle; 
+            pointer-events: all; cursor: grab; 
+            text-shadow: 1.5px 1.5px 0 var(--map-overlay-stroke), -1.5px -1.5px 0 var(--map-overlay-stroke), 1.5px -1.5px 0 var(--map-overlay-stroke), -1.5px 1.5px 0 var(--map-overlay-stroke); 
+        }
+        .adlam-label { 
+            font-family: 'ADLaM Display', cursive; fill: var(--map-overlay-text); 
+            font-weight: 400; cursor: move; text-anchor: middle; dominant-baseline: middle; 
+            text-shadow: 2px 2px 0px var(--map-overlay-stroke); 
+        }
+        .room-label:hover, .adlam-label:hover { fill: var(--accent); }
+        .room-label.dragging, .adlam-label.selected { fill: #dc3545; text-decoration: underline; }
+
+        .drag-box { fill: rgba(0, 123, 255, 0.2); stroke: var(--accent); stroke-width: 1; stroke-dasharray: 4; pointer-events: none; }
+        .poly-dot { fill: red; stroke: white; stroke-width: 1; r: 4; pointer-events: none; }
+        .poly-line { stroke: red; stroke-width: 2; stroke-dasharray: 4; pointer-events: none; }
+        .room-group.editing .room-poly { stroke: deeppink !important; stroke-width: 3; stroke-dasharray: 5,5; }
+
+        .fill-none { fill: rgba(0, 0, 0, 0.05); } 
+        .fill-yellow { fill: rgba(255, 255, 0, 0.4); }
+        .fill-green { fill: rgba(0, 255, 0, 0.4); }
+        .fill-blue { fill: rgba(0, 123, 255, 0.4); }
+        .fill-red { fill: rgba(220, 53, 69, 0.4); }
+        .fill-orange { fill: rgba(253, 126, 20, 0.4); }
+        .fill-purple { fill: rgba(111, 66, 193, 0.4); }
+        .room-group.active .room-poly { fill: rgba(255, 193, 7, 0.8) !important; stroke: orange; stroke-width: 3; }
+
+        .status-msg { font-size: 11px; font-style: italic; color: var(--text-muted); text-align: center; margin-top: 5px; }
+
+        .design-studio {
+            background: var(--header-bg); color: var(--header-text);
+            padding: 20px; border-top: 4px solid var(--accent);
+            display: flex; gap: 20px; align-items: center; justify-content: center;
+            margin-top: 50px; border-radius: 8px;
+        }
+        .theme-btn {
+            background: transparent; border: 1px solid rgba(255,255,255,0.3); color: inherit;
+            padding: 8px 16px; border-radius: 20px; cursor: pointer; transition: all 0.2s;
+        }
+        .theme-btn:hover, .theme-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="global-header">
+        <div style="font-size: 20px; font-weight: bold;" id="appTitle">Generation Map</div>
+        
+        <div class="header-controls">
+            <div style="display:flex; flex-direction:column;">
+                <span style="font-size:10px;">Number of Maps</span>
+                <select id="mapCountSelect">
+                    <option value="1" selected>1 Map</option>
+                    <option value="2">2 Maps</option>
+                    <option value="3">3 Maps</option>
+                    <option value="4">4 Maps</option>
+                    <option value="5">5 Maps</option>
+                    <option value="6">6 Maps</option>
+                    <option value="7">7 Maps</option>
+                    <option value="8">8 Maps</option>
+                    <option value="9">9 Maps</option>
+                    <option value="10">10 Maps</option>
+                </select>
+            </div>
+
+            <div style="display:flex; flex-direction:column;">
+                <span style="font-size:10px;">Project Name</span>
+                <input type="text" id="fileNameInput" placeholder="Enter File Name..." value="Generation_Map">
+            </div>
+            
+            <button id="pdfBtn" class="btn-warning btn-lg" style="height: 42px;">⬇️ Download PDF</button>
+            <button id="exportViewerBtn" class="btn-dark btn-lg" style="height: 42px;">🌐 Export Viewer (HTML)</button>
+            <button id="downloadHtmlBtn" class="btn-success btn-lg" style="height: 42px;">⬇️ Download HTML Map</button>
+        </div>
+    </div>
+
+    <div id="editorsContainer"></div>
+
+    <div class="design-studio">
+        <strong style="text-transform:uppercase; letter-spacing:1px;">🎨 Design & Theme Settings:</strong>
+        <button class="theme-btn active" onclick="setTheme('light')">☀️ Light</button>
+        <button class="theme-btn" onclick="setTheme('dark')">🌙 Dark Mode</button>
+        <button class="theme-btn" onclick="setTheme('blueprint')">📐 Blueprint</button>
+        <span style="font-size:12px; opacity:0.7; margin-left:10px;">(Applies to PDF & Export)</span>
+    </div>
+
+    <template id="mapTemplate">
+        <div class="map-section">
+            <div class="map-badge"></div>
+            
+            <div class="editor-widget">
+                <div class="widget-header">
+                    <span>Map Editor</span>
+                    <span style="cursor:pointer; padding:0 5px;" class="toggle-btn">_</span>
+                </div>
+                <div class="widget-body">
+                    <div>
+                        <div class="section-title">1. Map Image</div>
+                        <input type="file" class="file-input" accept="image/*" style="margin-bottom:5px;">
+                        <div class="section-title">Zoom</div>
+                        <input type="range" class="zoom-slider" min="20" max="300" value="100">
+                    </div>
+
+                    <hr style="border:0; border-top:1px solid #ccc; margin:0; opacity:0.5;">
+
+                    <div>
+                        <div class="section-title">2. Draw Rooms</div>
+                        <div class="row">
+                            <label style="font-size:13px; display:flex; align-items:center; gap:5px; cursor:pointer;">
+                                <input type="checkbox" class="builder-check"> <strong>Edit Mode</strong>
+                            </label>
+                            <select class="tool-select" disabled>
+                                <option value="box">Rectangle</option>
+                                <option value="poly">Polygon</option>
+                                <option value="eraser">Eraser</option>
+                            </select>
+                            <button class="finish-poly-btn btn-info" style="display:none; padding:4px;">Finish</button>
+                        </div>
+                        <div style="margin-top:5px;">
+                            <select class="color-select" disabled>
+                                <option value="none">No Highlight</option>
+                                <option value="yellow">Highlight: Yellow</option>
+                                <option value="green">Highlight: Green</option>
+                                <option value="blue">Highlight: Blue</option>
+                                <option value="red">Highlight: Red</option>
+                                <option value="orange">Highlight: Orange</option>
+                                <option value="purple">Highlight: Purple</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="section-title">3. Room Data</div>
+                        <div class="row">
+                            <input type="text" class="room-input" placeholder="Room #" disabled style="width: 30%;">
+                            <input type="text" class="location-input" placeholder="Location" disabled style="width: 35%;">
+                            <input type="number" class="size-input" value="52" title="Font Size" style="width: 25%;" disabled>
+                        </div>
+                        <input type="text" class="teacher-input" placeholder="Teacher Name / Label" disabled style="margin-top:5px;">
+                        
+                        <div class="btn-row">
+                            <button class="save-btn btn-primary" disabled>Set / Update</button>
+                            <button class="delete-btn btn-danger" disabled>Delete</button>
+                            <button class="cancel-btn btn-secondary" disabled>Cancel</button>
+                        </div>
+                    </div>
+
+                    <div style="background:rgba(0,0,0,0.05); padding:8px; border-radius:4px; border:1px solid #ccc;">
+                        <div class="row">
+                            <div style="flex:1;">
+                                <div class="section-title">Add Image</div>
+                                <input type="file" class="icon-input" accept="image/*" disabled style="font-size:11px;">
+                            </div>
+                            <div style="width:50px;">
+                                <div class="section-title">Size</div>
+                                <input type="number" class="icon-size-input" value="100" disabled>
+                            </div>
+                        </div>
+                        <div style="margin-top:8px;">
+                            <div class="section-title">Add Text Box</div>
+                            <div class="row">
+                                <input type="text" class="custom-text-input" placeholder="Text..." disabled>
+                                <button class="add-text-btn btn-info" disabled style="flex:0 0 40px;">Add</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="border-top:1px solid #ccc; padding-top:5px; opacity:0.8;">
+                        <div class="section-title">6. Bulk Update (Paste Excel: Room, Name)</div>
+                        <div class="row" style="align-items:flex-start;">
+                            <textarea class="bulk-input" rows="2" placeholder="101  Smith" disabled style="font-size:11px; flex:1; white-space:pre;"></textarea>
+                            <button class="bulk-btn btn-warning" disabled style="flex:0 0 50px; height:45px;">Apply</button>
+                        </div>
+                    </div>
+
+                    <div style="border-top:1px solid #ccc; padding-top:10px; text-align:center;">
+                        <button class="btn-dark download-img-btn" style="width:100%;">⬇️ Download This Map (Image)</button>
+                    </div>
+                    
+                    <div class="status-msg">Load map to start</div>
+                </div>
+            </div>
+
+            <div class="scroll-wrapper">
+                <div class="map-container">
+                    <img class="map-img map-image">
+                    <svg class="map-svg map-overlay" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+                </div>
+            </div>
+        </div>
+    </template>
+<script>
+        const activeEditors = [];
+        let currentTheme = 'light';
+
+        function setTheme(theme) {
+            currentTheme = theme;
+            document.documentElement.setAttribute('data-theme', theme);
+            document.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.toLowerCase().includes(theme));
+            });
+        }
+
+        class MapEditor {
+            constructor(element) {
+                this.container = element;
+                this.widget = this.container.querySelector('.editor-widget');
+                this.widgetHeader = this.container.querySelector('.widget-header');
+                this.widgetBody = this.container.querySelector('.widget-body');
+                this.toggleBtn = this.container.querySelector('.toggle-btn');
+                
+                this.fileInput = this.container.querySelector('.file-input');
+                this.mapImg = this.container.querySelector('.map-img');
+                this.mapSvg = this.container.querySelector('.map-svg');
+                this.mapContainer = this.container.querySelector('.map-container');
+                
+                this.builderCheck = this.container.querySelector('.builder-check');
+                this.toolSelect = this.container.querySelector('.tool-select');
+                this.colorSelect = this.container.querySelector('.color-select');
+                this.finishPolyBtn = this.container.querySelector('.finish-poly-btn');
+                this.roomInput = this.container.querySelector('.room-input');
+                this.locationInput = this.container.querySelector('.location-input'); 
+                this.teacherInput = this.container.querySelector('.teacher-input');
+                this.sizeInput = this.container.querySelector('.size-input');
+                this.saveBtn = this.container.querySelector('.save-btn');
+                this.deleteBtn = this.container.querySelector('.delete-btn');
+                this.cancelBtn = this.container.querySelector('.cancel-btn');
+                this.statusMsg = this.container.querySelector('.status-msg');
+                this.zoomSlider = this.container.querySelector('.zoom-slider');
+                this.iconInput = this.container.querySelector('.icon-input');
+                this.iconSizeInput = this.container.querySelector('.icon-size-input');
+                this.customTextInput = this.container.querySelector('.custom-text-input');
+                this.addTextBtn = this.container.querySelector('.add-text-btn');
+                this.bulkInput = this.container.querySelector('.bulk-input');
+                this.bulkBtn = this.container.querySelector('.bulk-btn');
+                this.downloadImgBtn = this.container.querySelector('.download-img-btn');
+
+                this.addedGroups = [];
+                this.currentEditGroup = null;
+                this.currentEditIcon = null;
+                this.currentEditLabel = null;
+                this.isDragging = false;
+                this.startX = 0; this.startY = 0; this.dragRect = null;
+                this.originalWidth = 1000; this.originalHeight = 1000;
+                this.currentBase64 = null; 
+                this.isDraggingText = false;
+                this.isDraggingIcon = false;
+                this.isDraggingLabel = false;
+                this.dragTextEl = null;
+                this.dragIconEl = null;
+                this.dragLabelEl = null;
+                this.textOffset = {x:0, y:0};
+                this.polyPoints = [];
+                this.tempPolyLine = null;
+                this.isWidgetDragging = false;
+                this.widgetOffsetX = 0;
+                this.widgetOffsetY = 0;
+
+                this.init();
+            }
+
+            init() {
+                if(this.mapImg.getAttribute('src')) {
+                     this.currentBase64 = this.mapImg.getAttribute('src');
+                     this.mapImg.src = this.currentBase64;
+                     this.mapImg.onload = () => {
+                         this.originalWidth = this.mapImg.naturalWidth;
+                         this.originalHeight = this.mapImg.naturalHeight;
+                         this.mapSvg.setAttribute('viewBox', `0 0 ${this.originalWidth} ${this.originalHeight}`);
+                     };
+                } else if(this.mapImg.src && this.mapImg.src.startsWith('data:')) {
+                     this.currentBase64 = this.mapImg.src; 
+                     this.originalWidth = this.mapImg.naturalWidth || 1000;
+                     this.originalHeight = this.mapImg.naturalHeight || 1000;
+                     this.mapSvg.setAttribute('viewBox', `0 0 ${this.originalWidth} ${this.originalHeight}`);
+                }
+
+                this.mapSvg.querySelectorAll('.room-group').forEach(g => this.addedGroups.push(g));
+                this.widgetHeader.addEventListener('mousedown', (e) => this.startWidgetDrag(e));
+                window.addEventListener('mouseup', () => this.stopWidgetDrag());
+                window.addEventListener('mousemove', (e) => this.doWidgetDrag(e));
+                this.toggleBtn.addEventListener('click', () => this.widgetBody.classList.toggle('collapsed'));
+                this.fileInput.addEventListener('change', (e) => this.handleUpload(e));
+                this.iconInput.addEventListener('change', (e) => this.handleIconUpload(e));
+                this.iconSizeInput.addEventListener('input', (e) => this.updateIconSize(e.target.value));
+                this.addTextBtn.addEventListener('click', () => this.handleAddText());
+                this.bulkBtn.addEventListener('click', () => this.handleBulkUpdate());
+                this.downloadImgBtn.addEventListener('click', () => this.downloadMapImage());
+                this.mapSvg.addEventListener('mousedown', (e) => this.onMouseDown(e));
+                this.mapSvg.addEventListener('mousemove', (e) => this.onMouseMove(e));
+                this.mapSvg.addEventListener('mouseup', (e) => this.onMouseUp(e));
+                this.builderCheck.addEventListener('change', () => this.toggleBuilder());
+                this.toolSelect.addEventListener('change', () => this.handleToolChange());
+                this.finishPolyBtn.addEventListener('click', () => this.finishPolygon());
+                this.saveBtn.addEventListener('click', () => this.saveRoom());
+                this.deleteBtn.addEventListener('click', () => this.deleteObject());
+                this.cancelBtn.addEventListener('click', () => this.resetBuilder());
+                this.sizeInput.addEventListener('input', () => this.updateLivePreview());
+                this.teacherInput.addEventListener('input', () => this.updateLivePreview());
+                this.zoomSlider.addEventListener('input', (e) => {
+                    this.mapContainer.style.width = e.target.value + "%";
+                });
+            }
+
+            async downloadMapImage() {
+                if(!this.currentBase64) { alert("Please upload a map first."); return; }
+                const projectName = document.getElementById('fileNameInput').value || 'Map';
+                const mapIndex = this.container.querySelector('.map-badge').textContent;
+                this.statusMsg.textContent = "Generating Image...";
+                try {
+                    const dataUrl = await generateHighResCanvas(this);
+                    const a = document.createElement('a');
+                    a.href = dataUrl;
+                    a.download = `${projectName}_Map_${mapIndex}.jpg`;
+                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                    this.statusMsg.textContent = "Image Downloaded!";
+                } catch(e) { this.statusMsg.textContent = "Error generating image."; }
+            }
+
+            startWidgetDrag(e) {
+                this.isWidgetDragging = true;
+                const rect = this.widget.getBoundingClientRect();
+                this.widgetOffsetX = e.clientX - rect.left;
+                this.widgetOffsetY = e.clientY - rect.top;
+            }
+
+            doWidgetDrag(e) {
+                if(!this.isWidgetDragging) return;
+                const containerRect = this.container.getBoundingClientRect();
+                let newLeft = e.clientX - containerRect.left - this.widgetOffsetX;
+                let newTop = e.clientY - containerRect.top - this.widgetOffsetY;
+                this.widget.style.right = 'auto'; 
+                this.widget.style.left = newLeft + 'px';
+                this.widget.style.top = newTop + 'px';
+            }
+
+            stopWidgetDrag() { this.isWidgetDragging = false; }
+
+            handleUpload(e) {
+                const file = e.target.files[0];
+                if(file) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                        this.currentBase64 = evt.target.result;
+                        this.mapImg.setAttribute('src', this.currentBase64);
+                        this.mapImg.src = this.currentBase64;
+                        this.mapImg.onload = () => {
+                            this.originalWidth = this.mapImg.naturalWidth;
+                            this.originalHeight = this.mapImg.naturalHeight;
+                            this.mapSvg.setAttribute('viewBox', `0 0 ${this.originalWidth} ${this.originalHeight}`);
+                            this.statusMsg.textContent = "Image loaded.";
+                        };
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+
+            handleIconUpload(e) {
+                if(!this.builderCheck.checked) return;
+                const file = e.target.files[0];
+                if(file) {
+                    const reader = new FileReader();
+                    reader.onload = (evt) => {
+                        this.addIcon(evt.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+                this.iconInput.value = "";
+            }
+
+            handleBulkUpdate() {
+                const text = this.bulkInput.value;
+                if(!text) return;
+                const lines = text.split(/\r?\n/);
+                let updateCount = 0;
+                const notFoundList = [];
+                const updatedGroups = new Set();
+
+                lines.forEach(line => {
+                    if(!line.trim()) return;
+                    const parts = line.split(/,|\t|\s{2,}/);
+                    if(parts.length >= 2) {
+                        const roomNum = parts[0].trim().toLowerCase();
+                        const newName = parts[1].trim();
+                        let found = false;
+                        this.container.querySelectorAll('.room-group').forEach(group => {
+                            if((group.dataset.name || "").trim().toLowerCase() === roomNum) {
+                                found = true;
+                                group.dataset.teacher = newName;
+                                const label = group.querySelector('.room-label');
+                                if(label) label.textContent = newName;
+                                updateCount++;
+                                updatedGroups.add(group);
+                            }
+                        });
+                        if(!found) notFoundList.push(parts[0].trim());
+                    }
+                });
+
+                const untouchedRooms = Array.from(this.container.querySelectorAll('.room-group')).filter(g => !updatedGroups.has(g)).map(g => g.dataset.name || "Unnamed");
+                let msg = `Update Results:\n✅ Updated: ${updateCount}\n`;
+                if(notFoundList.length > 0) msg += `❌ Not found: ${notFoundList.join(", ")}\n`;
+                if(untouchedRooms.length > 0) msg += `⚠️ Unchanged: ${untouchedRooms.join(", ")}`;
+                alert(msg);
+                this.bulkInput.value = "";
+            }
+
+            handleAddText() {
+                const text = this.customTextInput.value;
+                if(!text) return;
+                const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                txt.textContent = text;
+                txt.setAttribute("x", 50); txt.setAttribute("y", 50);
+                txt.setAttribute("class", "adlam-label");
+                txt.style.fontSize = "40px";
+                this.mapSvg.appendChild(txt);
+                this.customTextInput.value = "";
+                this.selectLabel(txt);
+            }
+
+            addIcon(href) {
+                const img = document.createElementNS("http://www.w3.org/2000/svg", "image");
+                img.setAttributeNS("http://www.w3.org/1999/xlink", "href", href);
+                img.setAttribute("x", 50); img.setAttribute("y", 50);
+                img.setAttribute("width", 100); img.setAttribute("height", 100);
+                img.setAttribute("class", "draggable-icon");
+                this.mapSvg.appendChild(img);
+                this.selectIcon(img);
+            }
+
+            selectIcon(img) {
+                this.deselectAll();
+                this.currentEditIcon = img;
+                this.currentEditIcon.classList.add('selected');
+                this.iconSizeInput.disabled = false;
+                this.iconSizeInput.value = parseInt(img.getAttribute('width'));
+                this.deleteBtn.disabled = false;
+                this.statusMsg.textContent = "Icon selected.";
+            }
+
+            selectLabel(label) {
+                this.deselectAll();
+                this.currentEditLabel = label;
+                this.currentEditLabel.classList.add('selected');
+                this.sizeInput.disabled = false; 
+                this.sizeInput.value = parseInt(label.style.fontSize.replace('px','')) || 40;
+                this.deleteBtn.disabled = false;
+                this.statusMsg.textContent = "Text selected.";
+            }
+
+            deselectAll() {
+                if(this.currentEditGroup) this.resetBuilder();
+                if(this.currentEditIcon) {
+                    this.currentEditIcon.classList.remove('selected');
+                    this.currentEditIcon = null;
+                    this.iconSizeInput.disabled = true;
+                }
+                if(this.currentEditLabel) {
+                    this.currentEditLabel.classList.remove('selected');
+                    this.currentEditLabel = null;
+                }
+            }
+
+            updateIconSize(val) {
+                if(this.currentEditIcon) {
+                    this.currentEditIcon.setAttribute("width", val);
+                    this.currentEditIcon.setAttribute("height", val); 
+                }
+            }
+
+            getSvgPoint(e) {
+                const rect = this.mapImg.getBoundingClientRect();
+                if(rect.width === 0) return {x:0, y:0};
+                const x = Math.round((e.clientX - rect.left) * (this.originalWidth / rect.width));
+                const y = Math.round((e.clientY - rect.top) * (this.originalHeight / rect.height));
+                return {x, y};
+            }
+
+            onMouseDown(e) {
+                if(!this.builderCheck.checked) return;
+                
+                if (e.target.classList.contains('adlam-label')) {
+                    this.selectLabel(e.target);
+                    this.isDraggingLabel = true;
+                    this.dragLabelEl = e.target;
+                    const pt = this.getSvgPoint(e);
+                    this.textOffset = { x: pt.x - parseFloat(this.dragLabelEl.getAttribute('x')), y: pt.y - parseFloat(this.dragLabelEl.getAttribute('y')) };
+                    e.stopPropagation(); return;
+                }
+
+                if (e.target.classList.contains('draggable-icon')) {
+                    this.selectIcon(e.target);
+                    this.isDraggingIcon = true;
+                    this.dragIconEl = e.target;
+                    const pt = this.getSvgPoint(e);
+                    this.textOffset = { x: pt.x - parseFloat(this.dragIconEl.getAttribute('x')), y: pt.y - parseFloat(this.dragIconEl.getAttribute('y')) };
+                    e.stopPropagation(); return;
+                }
+
+                const mode = this.toolSelect.value;
+
+                if (mode === 'eraser') {
+                    const clickedGroup = e.target.closest('.room-group');
+                    if (clickedGroup) {
+                        const poly = clickedGroup.querySelector('.room-poly');
+                        ['fill-yellow','fill-green','fill-blue','fill-red','fill-orange','fill-purple','fill-none'].forEach(c => poly.classList.remove(c));
+                        poly.classList.add('fill-none');
+                        clickedGroup.setAttribute('data-color', 'none');
+                        this.statusMsg.textContent = "Color removed!";
+                        if (this.currentEditGroup === clickedGroup) this.colorSelect.value = 'none';
+                    }
+                    e.stopPropagation(); return;
+                }
+
+                if (e.target.classList.contains('room-label')) {
+                    const group = e.target.parentNode;
+                    if(this.currentEditGroup !== group) this.enterEditMode(group);
+                    this.isDraggingText = true;
+                    this.dragTextEl = e.target;
+                    const pt = this.getSvgPoint(e);
+                    this.textOffset = { x: pt.x - parseFloat(this.dragTextEl.getAttribute('x')), y: pt.y - parseFloat(this.dragTextEl.getAttribute('y')) };
+                    this.dragTextEl.classList.add('dragging');
+                    e.stopPropagation(); return;
+                }
+
+                const clickedGroup = e.target.closest('.room-group');
+                if(clickedGroup) { this.enterEditMode(clickedGroup); return; }
+
+                if(this.currentEditGroup) { this.resetBuilder(); return; }
+                
+                const pt = this.getSvgPoint(e);
+                if (mode === 'box') {
+                    this.isDragging = true;
+                    this.startX = pt.x; this.startY = pt.y;
+                    this.dragRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                    this.dragRect.setAttribute("class", "drag-box");
+                    this.dragRect.setAttribute("x", this.startX); this.dragRect.setAttribute("y", this.startY);
+                    this.mapSvg.appendChild(this.dragRect);
+                } else if (mode === 'poly') {
+                    this.addPolyPoint(pt);
+                }
+            }
+
+            onMouseMove(e) {
+                const pt = this.getSvgPoint(e);
+                if(this.isDraggingLabel && this.dragLabelEl) {
+                    this.dragLabelEl.setAttribute('x', pt.x - this.textOffset.x);
+                    this.dragLabelEl.setAttribute('y', pt.y - this.textOffset.y);
+                    return;
+                }
+                if(this.isDraggingIcon && this.dragIconEl) {
+                    this.dragIconEl.setAttribute('x', pt.x - this.textOffset.x);
+                    this.dragIconEl.setAttribute('y', pt.y - this.textOffset.y);
+                    return;
+                }
+                if(this.isDraggingText && this.dragTextEl) {
+                    this.dragTextEl.setAttribute('x', pt.x - this.textOffset.x);
+                    this.dragTextEl.setAttribute('y', pt.y - this.textOffset.y);
+                    return;
+                }
+                if(this.isDragging && this.dragRect) {
+                    const w = Math.abs(pt.x - this.startX);
+                    const h = Math.abs(pt.y - this.startY);
+                    const x = Math.min(pt.x, this.startX);
+                    const y = Math.min(pt.y, this.startY);
+                    this.dragRect.setAttribute("x", x); this.dragRect.setAttribute("y", y);
+                    this.dragRect.setAttribute("width", w); this.dragRect.setAttribute("height", h);
+                }
+                if (this.polyPoints.length > 0 && !this.isDragging) {
+                    if(this.tempPolyLine) this.tempPolyLine.remove();
+                    const lastPt = this.polyPoints[this.polyPoints.length-1];
+                    this.tempPolyLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    this.tempPolyLine.setAttribute("x1", lastPt.x); this.tempPolyLine.setAttribute("y1", lastPt.y);
+                    this.tempPolyLine.setAttribute("x2", pt.x); this.tempPolyLine.setAttribute("y2", pt.y);
+                    this.tempPolyLine.setAttribute("class", "poly-line");
+                    this.mapSvg.appendChild(this.tempPolyLine);
+                }
+            }
+
+            onMouseUp(e) {
+                if(this.isDraggingLabel) { this.isDraggingLabel = false; this.dragLabelEl = null; return; }
+                if(this.isDraggingIcon) { this.isDraggingIcon = false; this.dragIconEl = null; return; }
+                if(this.isDraggingText) {
+                    this.isDraggingText = false;
+                    if(this.dragTextEl) this.dragTextEl.classList.remove('dragging');
+                    this.dragTextEl = null;
+                    return;
+                }
+                if(this.isDragging) {
+                    this.isDragging = false;
+                    if(this.dragRect && this.toolSelect.value === 'box') {
+                        const x = parseFloat(this.dragRect.getAttribute("x"));
+                        const y = parseFloat(this.dragRect.getAttribute("y"));
+                        const w = parseFloat(this.dragRect.getAttribute("width"));
+                        const h = parseFloat(this.dragRect.getAttribute("height"));
+                        this.dragRect.remove(); this.dragRect = null;
+                        if(w > 10) this.createRoom([{x:x, y:y}, {x:x+w, y:y}, {x:x+w, y:y+h}, {x:x, y:y+h}]);
+                    }
+                }
+            }
+
+            addPolyPoint(pt) {
+                this.polyPoints.push(pt);
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                circle.setAttribute("cx", pt.x); circle.setAttribute("cy", pt.y);
+                circle.setAttribute("r", 5); circle.setAttribute("fill", "red");
+                circle.setAttribute("class", "poly-dot");
+                this.mapSvg.appendChild(circle);
+                if (this.polyPoints.length > 1) {
+                    const prev = this.polyPoints[this.polyPoints.length - 2];
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.setAttribute("x1", prev.x); line.setAttribute("y1", prev.y);
+                    line.setAttribute("x2", pt.x); line.setAttribute("y2", pt.y);
+                    line.setAttribute("class", "poly-line");
+                    this.mapSvg.appendChild(line);
+                }
+                this.finishPolyBtn.style.display = "inline-block";
+            }
+
+            finishPolygon() {
+                if (this.polyPoints.length < 3) return alert("Need 3+ points");
+                this.createRoom(this.polyPoints);
+                this.resetPolyState();
+            }
+
+            resetPolyState() {
+                this.polyPoints = [];
+                if(this.tempPolyLine) { this.tempPolyLine.remove(); this.tempPolyLine = null; }
+                this.container.querySelectorAll('.poly-dot').forEach(el => el.remove());
+                this.container.querySelectorAll('.poly-line').forEach(el => el.remove());
+                this.finishPolyBtn.style.display = "none";
+            }
+
+            createRoom(coords) {
+                const fontSize = parseInt(this.sizeInput.value) || 52;
+                this.renderRoom(this.roomInput.value, this.teacherInput.value, coords, true, fontSize, null, this.colorSelect.value, this.locationInput.value);
+                const newGroup = this.addedGroups[this.addedGroups.length - 1];
+                this.enterEditMode(newGroup);
+                this.statusMsg.textContent = "Room Created!";
+            }
+
+            enterEditMode(group) {
+                if(this.currentEditGroup) this.currentEditGroup.classList.remove('editing');
+                this.currentEditGroup = group;
+                this.currentEditGroup.classList.add('editing');
+                this.mapSvg.appendChild(group);
+                
+                this.roomInput.value = group.dataset.name || "";
+                this.teacherInput.value = group.dataset.teacher || "";
+                this.locationInput.value = group.dataset.location || "";
+                this.colorSelect.value = group.dataset.color || "none"; 
+                
+                const textEl = group.querySelector('text');
+                this.sizeInput.value = parseInt(textEl.style.fontSize.replace('px','')) || 52;
+                this.saveBtn.disabled = false; this.saveBtn.textContent = "Set / Update";
+                this.deleteBtn.disabled = false;
+                this.teacherInput.focus();
+                this.statusMsg.textContent = "Editing.";
+            }
+
+            updateLivePreview() {
+                if(this.currentEditGroup) {
+                    const textEl = this.currentEditGroup.querySelector('text');
+                    textEl.textContent = this.teacherInput.value;
+                    textEl.style.fontSize = this.sizeInput.value + "px";
+                }
+                if(this.currentEditLabel) {
+                    this.currentEditLabel.style.fontSize = this.sizeInput.value + "px";
+                }
+            }
+
+            saveRoom() {
+                if(!this.currentEditGroup) return;
+                this.currentEditGroup.dataset.name = this.roomInput.value;
+                this.currentEditGroup.dataset.teacher = this.teacherInput.value;
+                this.currentEditGroup.dataset.location = this.locationInput.value;
+                this.currentEditGroup.dataset.color = this.colorSelect.value;
+                
+                const textEl = this.currentEditGroup.querySelector('text');
+                const cx = parseFloat(textEl.getAttribute('x'));
+                const cy = parseFloat(textEl.getAttribute('y'));
+                const poly = this.currentEditGroup.querySelector('polygon');
+                const pts = poly.getAttribute('points').trim().split(/\s+/).map(p => {
+                    const s = p.split(','); return {x:parseFloat(s[0]), y:parseFloat(s[1])};
+                });
+                
+                this.renderRoom(
+                    this.roomInput.value, 
+                    this.teacherInput.value, 
+                    pts, 
+                    false, 
+                    this.sizeInput.value, 
+                    {x:cx, y:cy},
+                    this.colorSelect.value,
+                    this.locationInput.value
+                );
+                
+                this.statusMsg.textContent = "Saved!";
+                this.currentEditGroup.classList.remove('editing'); 
+            }
+
+            deleteObject() {
+                if(this.currentEditIcon) {
+                    this.currentEditIcon.remove();
+                    this.currentEditIcon = null;
+                    this.iconSizeInput.disabled = true;
+                    this.statusMsg.textContent = "Icon Deleted";
+                    return;
+                }
+                if(this.currentEditLabel) {
+                    this.currentEditLabel.remove();
+                    this.currentEditLabel = null;
+                    this.statusMsg.textContent = "Text Deleted";
+                    return;
+                }
+
+                if(!this.currentEditGroup) return;
+                this.addedGroups = this.addedGroups.filter(g => g !== this.currentEditGroup);
+                this.currentEditGroup.remove();
+                this.resetBuilder();
+                this.statusMsg.textContent = "Room deleted.";
+            }
+
+            renderRoom(rName, tName, points, isNew, fontSize, manualTextPos = null, color = 'none', location = '') {
+                let sumX = 0, sumY = 0;
+                points.forEach(p => { sumX += p.x; sumY += p.y; });
+                let cx = Math.round(sumX/points.length);
+                let cy = Math.round(sumY/points.length);
+                if(manualTextPos) { cx = manualTextPos.x; cy = manualTextPos.y; }
+                
+                const pointsStr = points.map(p => `${p.x},${p.y}`).join(' ');
+                const fillClass = `fill-${color}`;
+                
+                const innerHTML = `<polygon class="room-poly ${fillClass}" points="${pointsStr}"></polygon>
+                                   <text class="room-label" x="${cx}" y="${cy}" style="font-size: ${fontSize}px;">${tName}</text>`;
+                if(isNew) {
+                    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                    g.innerHTML = innerHTML;
+                    g.setAttribute("class", "room-group editing");
+                    g.setAttribute("data-name", rName);
+                    g.setAttribute("data-teacher", tName);
+                    g.setAttribute("data-location", location);
+                    g.setAttribute("data-color", color);
+                    this.mapSvg.appendChild(g);
+                    this.addedGroups.push(g);
+                } else {
+                    this.currentEditGroup.innerHTML = innerHTML;
+                    this.currentEditGroup.setAttribute("data-name", rName);
+                    this.currentEditGroup.setAttribute("data-teacher", tName);
+                    this.currentEditGroup.setAttribute("data-location", location);
+                    this.currentEditGroup.setAttribute("data-color", color);
+                }
+            }
+
+            resetBuilder() {
+                this.roomInput.value = ""; this.teacherInput.value = ""; this.sizeInput.value = 52;
+                this.locationInput.value = "";
+                this.colorSelect.value = "none";
+                if(this.currentEditGroup) { this.currentEditGroup.classList.remove('editing'); this.currentEditGroup = null; }
+                this.saveBtn.disabled = true; this.deleteBtn.disabled = true;
+                this.resetPolyState();
+                this.statusMsg.textContent = "Ready.";
+            }
+
+            handleToolChange() {
+                this.resetPolyState();
+                if(this.toolSelect.value === 'eraser') {
+                    this.mapContainer.classList.add('eraser-active');
+                    this.statusMsg.textContent = "Eraser Mode: Click highlighted rooms to clear color.";
+                } else {
+                    this.mapContainer.classList.remove('eraser-active');
+                    this.statusMsg.textContent = "Draw Mode.";
+                }
+            }
+
+            toggleBuilder() {
+                const enabled = this.builderCheck.checked;
+                [this.roomInput, this.teacherInput, this.locationInput, this.sizeInput, this.cancelBtn, this.toolSelect, this.colorSelect, this.iconInput, this.customTextInput, this.addTextBtn, this.bulkInput, this.bulkBtn].forEach(el => el.disabled = !enabled);
+                if(!enabled) {
+                    this.resetBuilder();
+                    this.mapContainer.classList.remove('eraser-active');
+                }
+                this.statusMsg.textContent = enabled ? "Draw Mode." : "View Mode.";
+            }
+        }
+
+        const editorsContainer = document.getElementById('editorsContainer');
+        const mapTemplate = document.getElementById('mapTemplate');
+        const countSelect = document.getElementById('mapCountSelect');
+
+        function updateEditors(count) {
+            const currentCount = activeEditors.length;
+            if(count > currentCount) {
+                for(let i = currentCount; i < count; i++) {
+                    const clone = mapTemplate.content.cloneNode(true);
+                    const el = clone.querySelector('.map-section');
+                    el.id = `editor${i+1}`;
+                    el.querySelector('.map-badge').textContent = i + 1; // Initial numbering
+                    editorsContainer.appendChild(el);
+                    activeEditors.push(new MapEditor(el));
+                }
+            } else if (count < currentCount) {
+                for(let i = currentCount; i > count; i--) {
+                    const editorToRemove = activeEditors.pop();
+                    if(editorToRemove && editorToRemove.container) editorToRemove.container.remove();
+                }
+            }
+            // FORCE BADGE UPDATE: Ensures 1, 2, 3... order
+            document.querySelectorAll('.map-section').forEach((sec, idx) => {
+                sec.querySelector('.map-badge').textContent = (idx + 1);
+            });
+        }
+
+        countSelect.addEventListener('change', (e) => updateEditors(parseInt(e.target.value)));
+
+        window.addEventListener('load', () => {
+            const existing = document.querySelectorAll('.map-section');
+            if (existing.length > 0) {
+                countSelect.value = existing.length;
+                existing.forEach((el, index) => {
+                    if(!el.id) el.id = `editor${index+1}`;
+                    activeEditors.push(new MapEditor(el));
+                });
+            } else {
+                updateEditors(1); // Default to 1
+            }
+        });
+// --- DOWNLOAD / SAVE FULL HTML ---
+        document.getElementById('downloadHtmlBtn').addEventListener('click', () => {
+            document.querySelectorAll('input, textarea, select').forEach(el => {
+                if (el.type === 'checkbox' || el.type === 'radio') {
+                    if (el.checked) el.setAttribute('checked', 'checked');
+                    else el.removeAttribute('checked');
+                } else if (el.tagName === 'SELECT') {
+                    el.querySelectorAll('option').forEach(opt => {
+                        if (opt.selected) opt.setAttribute('selected', 'selected');
+                        else opt.removeAttribute('selected');
+                    });
+                } else {
+                    el.setAttribute('value', el.value);
+                    if (el.tagName === 'TEXTAREA') el.textContent = el.value;
+                }
+            });
+
+            // Update current map images
+            activeEditors.forEach((editor) => {
+                if (editor.currentBase64) {
+                    editor.mapImg.setAttribute('src', editor.currentBase64);
+                }
+                const widget = editor.widget;
+                if(widget) {
+                    widget.setAttribute('style', widget.getAttribute('style')); 
+                }
+            });
+
+            const fileName = document.getElementById('fileNameInput').value || 'Generation_Map';
+            const htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName + '.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // --- EXPORT VIEWER (MODIFIED GLOBAL SEARCH + KEYBOARD TOGGLE) ---
+        document.getElementById('exportViewerBtn').addEventListener('click', () => {
+            const projectName = document.getElementById('fileNameInput').value || 'Generation_Map';
+            
+            // Get Current Theme Colors for Export
+            const rootStyle = getComputedStyle(document.documentElement);
+            const themeColors = {
+                bgBody: rootStyle.getPropertyValue('--bg-body').trim(),
+                bgCard: rootStyle.getPropertyValue('--bg-card').trim(),
+                accent: rootStyle.getPropertyValue('--accent').trim(),
+                textMain: rootStyle.getPropertyValue('--text-main').trim()
+            };
+
+            let fileContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${projectName}</title><link href="https://fonts.googleapis.com/css2?family=ADLaM+Display&display=swap" rel="stylesheet"><style>
+                body{font-family:sans-serif;background:${themeColors.bgBody};color:${themeColors.textMain};padding:20px;margin:0;}
+                .map-container{position:relative;margin-bottom:60px;background:#fff;border:1px solid #ccc;}
+                .map-image{width:100%;display:block;}
+                .map-overlay{position:absolute;top:0;left:0;width:100%;height:100%;}
+                .room-poly{stroke:transparent;fill:transparent;}
+                .room-group.active .room-poly{stroke:orange;stroke-width:8;fill:rgba(255,193,7,0.5)!important}
+                .room-label{font-family:sans-serif;font-weight:bold;fill:#000;text-anchor:middle;dominant-baseline:middle;text-shadow:1px 1px 0 #fff;}
+                
+                /* WIDGET & KEYBOARDS */
+                .search-widget{position:fixed;top:20px;right:20px;width:400px;background:${themeColors.bgCard};border:2px solid ${themeColors.accent};border-radius:12px;z-index:9999;box-shadow:0 8px 30px rgba(0,0,0,0.4);padding:15px;}
+                .search-bar{width:100%;padding:12px;font-size:20px;border-radius:6px;border:1px solid #ccc;margin-bottom:15px;box-sizing:border-box;background:#fff;}
+                .kb-tabs{display:flex;margin-bottom:10px;border-bottom:1px solid #ccc;}
+                .kb-tab{padding:8px;cursor:pointer;flex:1;text-align:center;font-weight:bold;border-radius:4px 4px 0 0;background:#f0f0f0;}
+                .kb-tab.active{background:${themeColors.accent};color:white;}
+                
+                .kb-grid{display:grid;gap:5px;}
+                .numpad{grid-template-columns:repeat(3, 1fr);}
+                .qwerty{display:flex;flex-direction:column;gap:5px;}
+                .kb-row{display:flex;justify-content:center;gap:3px;}
+                .key{padding:15px 5px;background:#eee;border:1px solid #bbb;border-radius:4px;font-weight:bold;font-size:16px;text-align:center;cursor:pointer;flex:1;user-select:none;}
+                .key:active{background:#ccc;}
+                .key.action{background:${themeColors.accent};color:white;}
+                .key.delete{background:#dc3545;color:white;}
+                .key.wide{flex:2;}
+            </style></head><body>
+            <div style="font-size:26px;font-weight:bold;text-align:center;margin-bottom:30px;">${projectName}</div>
+            
+            <div class="search-widget" id="sWidget">
+                <div style="margin-bottom:10px;font-weight:bold;cursor:move;display:flex;justify-content:space-between;" onmousedown="startDrag(event,'sWidget')">
+                    <span>🔍 Global Search</span>
+                    <span onclick="toggleWidget()" style="cursor:pointer;">_</span>
+                </div>
+                <div id="wBody">
+                    <div class="kb-tabs">
+                        <div class="kb-tab active" id="tNum" onclick="setMode('num')">123</div>
+                        <div class="kb-tab" id="tAlpha" onclick="setMode('alpha')">ABC</div>
+                    </div>
+                    <input type="text" id="gSearch" class="search-bar" placeholder="Type here..." readonly>
+                    
+                    <div id="numpad" class="kb-grid numpad">
+                        <div class="key" onclick="pk('1')">1</div><div class="key" onclick="pk('2')">2</div><div class="key" onclick="pk('3')">3</div>
+                        <div class="key" onclick="pk('4')">4</div><div class="key" onclick="pk('5')">5</div><div class="key" onclick="pk('6')">6</div>
+                        <div class="key" onclick="pk('7')">7</div><div class="key" onclick="pk('8')">8</div><div class="key" onclick="pk('9')">9</div>
+                        <div class="key action" onclick="pk('.')">.</div><div class="key" onclick="pk('0')">0</div><div class="key delete" onclick="pk('DEL')">⌫</div>
+                        <div class="key wide action" style="grid-column: span 3;" onclick="pk('CLR')">Clear Search</div>
+                    </div>
+
+                    <div id="qwerty" class="qwerty" style="display:none;">
+                        <div class="kb-row"><div class="key" onclick="pk('Q')">Q</div><div class="key" onclick="pk('W')">W</div><div class="key" onclick="pk('E')">E</div><div class="key" onclick="pk('R')">R</div><div class="key" onclick="pk('T')">T</div><div class="key" onclick="pk('Y')">Y</div><div class="key" onclick="pk('U')">U</div><div class="key" onclick="pk('I')">I</div><div class="key" onclick="pk('O')">O</div><div class="key" onclick="pk('P')">P</div></div>
+                        <div class="kb-row"><div class="key" onclick="pk('A')">A</div><div class="key" onclick="pk('S')">S</div><div class="key" onclick="pk('D')">D</div><div class="key" onclick="pk('F')">F</div><div class="key" onclick="pk('G')">G</div><div class="key" onclick="pk('H')">H</div><div class="key" onclick="pk('J')">J</div><div class="key" onclick="pk('K')">K</div><div class="key" onclick="pk('L')">L</div></div>
+                        <div class="kb-row"><div class="key" onclick="pk('Z')">Z</div><div class="key" onclick="pk('X')">X</div><div class="key" onclick="pk('C')">C</div><div class="key" onclick="pk('V')">V</div><div class="key" onclick="pk('B')">B</div><div class="key" onclick="pk('N')">N</div><div class="key" onclick="pk('M')">M</div><div class="key action" onclick="pk(' ')">SPACE</div><div class="key delete" onclick="pk('DEL')">⌫</div></div>
+                        <div class="kb-row"><div class="key wide action" onclick="pk('CLR')">Clear Search</div></div>
+                    </div>
+                </div>
+            </div>`;
+
+            activeEditors.forEach((editor, idx) => {
+                if (editor.currentBase64) {
+                    fileContent += `<div class="map-container">
+                        <div style="background:#eee;padding:10px;font-weight:bold;border-bottom:1px solid #ccc;">Map ${idx+1}</div>
+                        <div style="position:relative;">
+                            <img src="${editor.currentBase64}" class="map-image">
+                            <svg class="map-overlay" viewBox="0 0 ${editor.originalWidth} ${editor.originalHeight}">${editor.mapSvg.innerHTML}</svg>
+                        </div>
+                    </div>`;
+                }
+            });
+
+            fileContent += `<script>
+                function pk(v){
+                    const i=document.getElementById('gSearch');
+                    if(v==='CLR')i.value='';else if(v==='DEL')i.value=i.value.slice(0,-1);else i.value+=v;
+                    runSearch(i.value);
+                }
+                function setMode(m){
+                    document.getElementById('numpad').style.display = (m==='num'?'grid':'none');
+                    document.getElementById('qwerty').style.display = (m==='alpha'?'flex':'none');
+                    document.getElementById('tNum').classList.toggle('active', m==='num');
+                    document.getElementById('tAlpha').classList.toggle('active', m==='alpha');
+                }
+                function runSearch(q){
+                    const query=q.toLowerCase();
+                    document.querySelectorAll('.room-group').forEach(g=>{
+                        g.classList.remove('active');
+                        const n=(g.dataset.name||'').toLowerCase();
+                        const t=g.textContent.toLowerCase();
+                        if(query && (n.includes(query) || t.includes(query))){
+                            g.classList.add('active');
+                            g.scrollIntoView({behavior:'smooth',block:'center'});
+                        }
+                    });
+                }
+                function toggleWidget(){ const b=document.getElementById('wBody'); b.style.display=(b.style.display==='none'?'block':'none'); }
+                let dEl=null,oX=0,oY=0;
+                function startDrag(e,id){dEl=document.getElementById(id);oX=e.clientX-dEl.getBoundingClientRect().left;oY=e.clientY-dEl.getBoundingClientRect().top;document.addEventListener('mousemove',doDrag);document.addEventListener('mouseup',stopDrag);}
+                function doDrag(e){if(dEl){dEl.style.left=(e.clientX-oX)+'px';dEl.style.top=(e.clientY-oY)+'px';dEl.style.right='auto';}}
+                function stopDrag(){dEl=null;document.removeEventListener('mousemove',doDrag);document.removeEventListener('mouseup',stopDrag);}
+            <\/script></body></html>`;
+
+            const blob = new Blob([fileContent], { type: 'text/html' });
+            const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = projectName + "_Interactive.html"; a.click();
+        });
+
+        // --- PDF ENGINE (RESTORED TO SAVE POINT 1) ---
+        function generateHighResCanvas(editorInstance) {
+            return new Promise((resolve) => {
+                const imgEl = editorInstance.mapImg;
+                const canvas = document.createElement('canvas');
+                canvas.width = imgEl.naturalWidth || 1000;
+                canvas.height = imgEl.naturalHeight || 1000;
+                const ctx = canvas.getContext('2d');
+
+                const img = new Image();
+                img.src = editorInstance.currentBase64 || imgEl.src;
+                
+                img.onload = () => {
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    
+                    editorInstance.container.querySelectorAll('.room-group').forEach(g => {
+                        const poly = g.querySelector('polygon');
+                        const color = g.dataset.color;
+                        if(color && color !== 'none') {
+                            const pts = poly.getAttribute('points').trim().split(/\s+/).map(p => { const s = p.split(','); return {x:parseFloat(s[0]), y:parseFloat(s[1])}; });
+                            ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+                            for(let i=1; i<pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+                            ctx.closePath();
+                            const colorMap = { 'yellow':'rgba(255,255,0,0.4)', 'green':'rgba(0,255,0,0.4)', 'blue':'rgba(0,123,255,0.4)', 'red':'rgba(220,53,69,0.4)', 'orange':'rgba(253,126,20,0.4)', 'purple':'rgba(111,66,193,0.4)' };
+                            ctx.fillStyle = colorMap[color]; ctx.fill();
+                        }
+                        const textEl = g.querySelector('.room-label');
+                        ctx.fillStyle = "#000"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                        ctx.font = `bold ${parseFloat(textEl.style.fontSize)}px Arial`;
+                        ctx.fillText(textEl.textContent, parseFloat(textEl.getAttribute('x')), parseFloat(textEl.getAttribute('y')));
+                    });
+                    resolve(canvas.toDataURL('image/jpeg', 0.9));
+                };
+            });
+        }
+
+        document.getElementById('pdfBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('pdfBtn');
+            const fileName = document.getElementById('fileNameInput').value || 'Generation_Map';
+            btn.textContent = "Rendering PDF...";
+            btn.disabled = true;
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF('l', 'in', [11, 8.5]); 
+            let pagesAdded = 0;
+            for (let i = 0; i < activeEditors.length; i++) {
+                const editor = activeEditors[i];
+                if ((editor.mapImg.src && editor.mapImg.src.length > 100) || editor.currentBase64) {
+                    if (pagesAdded > 0) pdf.addPage();
+                    const imgData = await generateHighResCanvas(editor);
+                    if(imgData.length > 100) {
+                        const props = pdf.getImageProperties(imgData);
+                        const ratio = Math.min(11 / props.width, 8.5 / props.height);
+                        const w = props.width * ratio;
+                        const h = props.height * ratio;
+                        pdf.addImage(imgData, 'JPEG', (11 - w)/2, (8.5 - h)/2, w, h);
+                        pagesAdded++;
+                    }
+                }
+            }
+            if(pagesAdded > 0) pdf.save(fileName + '.pdf');
+            else alert("No valid maps found to render.");
+            btn.textContent = "⬇️ Download PDF";
+            btn.disabled = false;
+        });
+    </script>
+</body>
+</html>
